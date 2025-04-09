@@ -4,7 +4,7 @@
   "main": "index.js",
   "type": "module",
   "bin": {
-    "render": "./build/index.js"
+    "render": "build/index.js"
   },
   "scripts": {
     "build": "tsc"
