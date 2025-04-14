@@ -3,6 +3,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
+import { ServiceData, DeployData, DeployResponse, EnvVar, EnvResponse } from "./types.js";
 
 const API_BASE_URL = "https://api.render.com";
 
@@ -42,95 +43,6 @@ async function getResponseFromRender<T>(url: string, options?: RequestInit): Pro
         console.error("Error making Render request:", error);
         return null;
     }
-}
-
-interface ServiceDetails {
-    id: string;
-    buildCommand?: string;
-    parentServer?: {
-        id: string;
-        name: string;
-    };
-    publishPath?: string;
-    previews?: {
-        generation: string;
-    };
-    url?: string;
-    buildPlan?: string;
-    region?: string;
-    env?: string;
-    plan?: string;
-}
-
-interface Service {
-    id: string;
-    autoDeploy: string;
-    branch: string;
-    buildFilter?: {
-        paths: string[];
-        ignoredPaths: string[];
-    };
-    createdAt: string;
-    dashboardUrl: string;
-    environmentId: string;
-    imagePath: string;
-    name: string;
-    notifyOnFail: string;
-    ownerId: string;
-    registryCredential?: {
-        id: string;
-        name: string;
-    };
-    repo: string;
-    rootDir: string;
-    slug: string;
-    suspended: string;
-    suspenders?: string[];
-    type: string;
-    updatedAt: string;
-    serviceDetails: ServiceDetails;
-}
-
-interface ServiceData {
-    service: Service;
-    cursor: string;
-}
-
-interface DeployData {
-    deploy: {
-        id: string;
-        commit: {
-            id: string;
-            message: string;
-            createdAt: string;
-        };
-        image: {
-            ref: string;
-            sha: string;
-            registryCredential: string;
-        };
-        status: string;
-        trigger: string;
-        finishedAt: string;
-        createdAt: string;
-        updatedAt: string;
-    };
-    cursor: string;
-}
-
-interface DeployResponse {
-  id: string;
-  commit: {
-    id: string;
-    message: string;
-    createdAt: string;
-  };
-  status: string;
-  trigger: string;
-  createdAt: string;
-  updatedAt: string;
-  startedAt?: string;
-  finishedAt?: string;
 }
 
 // Format service data
@@ -259,6 +171,142 @@ server.tool("trigger-deploy", "Trigger a deploy", { serviceId: z.string() }, asy
     };
 });
 
+server.tool("retrieve-deploy", "Retrieve a deploy", { serviceId: z.string(), deployId: z.string() }, async ({ serviceId, deployId }) => {
+    const deployUrl = `${API_BASE_URL}/v1/services/${serviceId}/deploys/${deployId}`;
+    const deployResponse = await getResponseFromRender<DeployResponse>(deployUrl, {
+      method: 'GET'
+    }) as DeployResponse | null;
+    
+    if (!deployResponse) {
+        return {
+            content: [
+                {
+                    type: "text",
+                    text: "Failed to retrieve deploy",
+                },
+            ],
+        };
+    }
+
+    return {
+        content: [
+            {
+                type: "text",
+                text: `Deploy retrieve status: ${deployResponse.status}. Complete detail:\n${JSON.stringify(deployResponse, null, 2)}`,
+            },
+        ],
+    };
+});
+
+server.tool("cancel-deploy", "Cancel a deploy", { serviceId: z.string(), deployId: z.string() }, async ({ serviceId, deployId }) => {
+    const deployUrl = `${API_BASE_URL}/v1/services/${serviceId}/deploys/${deployId}/cancel`;
+    const deployResponse = await getResponseFromRender<DeployResponse>(deployUrl, {
+      method: 'POST'
+    }) as DeployResponse | null;
+    
+    if (!deployResponse) {
+        return {
+            content: [
+                {
+                    type: "text",
+                    text: "Failed to cancel deploy",
+                },
+            ],
+        };
+    }
+
+    return {
+        content: [
+            {
+                type: "text",
+                text: `Deploy cancel status: ${deployResponse.status}. Complete detail:\n${JSON.stringify(deployResponse, null, 2)}`,
+            },
+        ],
+    };
+});
+
+server.tool("list-env-var", "List environment variables", { serviceId: z.string() }, async ({ serviceId }) => {
+    const envUrl = `${API_BASE_URL}/v1/services/${serviceId}/env`;
+    const envResponse = await getResponseFromRender<EnvResponse>(envUrl, {
+      method: 'GET'
+    }) as EnvResponse | null;
+    
+    if (!envResponse) {
+        return {
+            content: [
+                {
+                    type: "text",
+                    text: "Failed to list environment variables",
+                },
+            ],
+        };
+    }
+
+    return {
+        content: [
+            {
+                type: "text",
+                text: `Environment variables list:\n${JSON.stringify(envResponse, null, 2)}`,
+            },
+        ],
+    };
+});
+
+server.tool("add-update-env-var", "Add or update environment variables", { serviceId: z.string(), envVarKey: z.string(), envVarValue: z.string() }, async ({ serviceId, envVarKey, envVarValue }) => {
+    const envUrl = `${API_BASE_URL}/v1/services/${serviceId}/env-vars/${envVarKey}`;
+    const envResponse = await getResponseFromRender<EnvVar>(envUrl, {
+      method: 'PUT',
+      body: JSON.stringify({ value: envVarValue })
+    }) as EnvVar | null;
+    
+    if (!envResponse) {
+        return {
+            content: [
+                {
+                    type: "text",
+                    text: "Failed to add/update environment variable",
+                },
+            ],
+        };
+    }
+
+    return {
+        content: [
+            {
+                type: "text",
+                text: `Env. variable added/updated:\n${JSON.stringify(envResponse, null, 2)}`,
+            },
+        ],
+    };
+});
+
+server.tool("delete-env-var", "Delete environment variables", { serviceId: z.string(), envVarKey: z.string() }, async ({ serviceId, envVarKey }) => {
+    const envUrl = `${API_BASE_URL}/v1/services/${serviceId}/env-vars/${envVarKey}`;
+    const envResponse = await getResponseFromRender(envUrl, {
+      method: 'DELETE'
+    });
+    
+    if (!envResponse) {
+        return {
+            content: [
+                {
+                    type: "text",
+                    text: "Failed to delete environment variable",
+                },
+            ],
+        };
+    }
+
+    return {
+        content: [
+            {
+                type: "text",
+                text: `API response:\n${JSON.stringify(envResponse, null, 2)}`,
+            },
+        ],
+    };
+});
+
 function formatDeploy(deployData: DeployData) {
     const deploy = deployData.deploy;
     return [
@@ -266,9 +314,6 @@ function formatDeploy(deployData: DeployData) {
         `Commit: ${deploy.commit.id}`,
         `Commit Message: ${deploy.commit.message}`,
         `Commit Created At: ${deploy.commit.createdAt}`,
-        `Image Ref: ${deploy?.image?.ref}`,
-        `Image SHA: ${deploy?.image?.sha}`,
-        `Image Registry Credential: ${deploy?.image?.registryCredential}`,
         `Status: ${deploy.status}`,
         `Trigger: ${deploy.trigger}`,
         `Finished At: ${deploy.finishedAt}`,
