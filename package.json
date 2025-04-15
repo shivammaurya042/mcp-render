@@ -1,6 +1,6 @@
 {
   "name": "mcp-render",
-  "version": "1.0.5",
+  "version": "1.0.7",
   "main": "index.js",
   "type": "module",
   "bin": {
@@ -11,7 +11,9 @@
     "start": "npm run build && node build/index.js"
   },
   "files": [
-    "build"
+    "build/index.js",
+    "package.json",
+    "README.md"
   ],
   "keywords": [
     "render",
