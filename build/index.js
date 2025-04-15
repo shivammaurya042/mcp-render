@@ -18,7 +18,6 @@ function getApiKey() {
     return apiKey;
 }
 const RENDER_API_KEY = getApiKey();
-// const RENDER_API_KEY = getApiKey();
 // Helper function for making Render API requests
 async function getResponseFromRender(url, options) {
     try {
@@ -144,7 +143,7 @@ server.tool("cancel-deploy", "Cancel a deploy", { serviceId: z.string(), deployI
 });
 server.tool("list-env-var", "List environment variables", { serviceId: z.string() }, async ({ serviceId }) => {
     try {
-        const envUrl = `${API_BASE_URL}/v1/services/${serviceId}/env`;
+        const envUrl = `${API_BASE_URL}/v1/services/${serviceId}/env-vars`;
         const envResponse = await getResponseFromRender(envUrl, {
             method: 'GET'
         });
@@ -176,7 +175,7 @@ server.tool("delete-env-var", "Delete environment variables", { serviceId: z.str
         return createTextResponse(`Env. variable '${envVarKey}' deleted successfully.`);
     }
     catch (error) {
-        return createTextResponse(`Failed to delete env. variable '${envVarKey}'. Error: ${error}`);
+        return createTextResponse(`Failed to delete env. variable '${envVarKey}'. ${error}`);
     }
 });
 function formatDeploy(deployData) {

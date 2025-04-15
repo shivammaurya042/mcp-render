@@ -24,7 +24,6 @@ function getApiKey(): string {
   }
 
 const RENDER_API_KEY = getApiKey();
-// const RENDER_API_KEY = getApiKey();
 
 // Helper function for making Render API requests
 async function getResponseFromRender<T>(url: string, options?: RequestInit): Promise<T> {
@@ -160,7 +159,7 @@ server.tool("cancel-deploy", "Cancel a deploy", { serviceId: z.string(), deployI
 
 server.tool("list-env-var", "List environment variables", { serviceId: z.string() }, async ({ serviceId }) => {
     try {
-        const envUrl = `${API_BASE_URL}/v1/services/${serviceId}/env`;
+        const envUrl = `${API_BASE_URL}/v1/services/${serviceId}/env-vars`;
         const envResponse = await getResponseFromRender<EnvResponseItem[]>(envUrl, {
             method: 'GET'
         });
