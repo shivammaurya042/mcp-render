@@ -47,15 +47,9 @@ To integrate this server with the MCP client (ex: claude app, windsurf/cursor), 
   }
 }
 ```
-## Cloning the Repository
-To clone the repository, run the following command in your terminal:
-```bash
-git clone https://github.com/shivammaurya042/mcp-render.git
-```
 
 ## Testing the MCP server
-Use MCP inspector tool to test MCP server.
-[text](https://github.com/modelcontextprotocol/inspector)
+Use MCP inspector tool to test MCP server -> [MCP Inspector](https://github.com/modelcontextprotocol/inspector)
 
 Use command:
 ```bash
