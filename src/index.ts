@@ -3,7 +3,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
-import { ServiceData, DeployData, DeployResponse, EnvVar, RenderAPIError, EnvResponseItem } from "./types.js";
+import { ServiceData, DeployData, DeployResponse, EnvVar, RenderAPIError, EnvResponseItem, LogsResponse } from "./types.js";
 
 const API_BASE_URL = "https://api.render.com";
 
@@ -63,26 +63,6 @@ function createTextResponse(text: string): { content: { type: "text"; text: stri
     };
 }
 
-// Format service data
-function formatService(serviceData: ServiceData) {
-    const service = serviceData.service;
-    const details = service.serviceDetails;
-    return [
-        `ID: ${service.id}`,
-        `Name: ${service.name}`,
-        `Type: ${service.type}`,
-        `Status: ${service.suspended}`,
-        `Region: ${details.region || 'Not specified'}`,
-        `Environment: ${details.env || 'Not specified'}`,
-        `Plan: ${details.buildPlan || details.plan || 'Not specified'}`,
-        `URL: ${details.url || 'Not deployed'}`,
-        `Auto Deploy: ${service.autoDeploy}`,
-        `Branch: ${service.branch}`,
-        `Created At: ${service.createdAt}`,
-        "---"
-    ].join("\n");
-}
-
 // Register render service tools
 server.tool("get-services", "Get list of available services", async () => {
     try {
@@ -92,8 +72,7 @@ server.tool("get-services", "Get list of available services", async () => {
             return createTextResponse("No services found");
         }
 
-        const formattedServices = servicesData.map((data: ServiceData) => formatService(data));
-        const servicesText = `Available Render Services:\n\n${formattedServices.join("\n")}`;
+        const servicesText = `Available Render Services:\n\n${JSON.stringify(servicesData, null, 2)}`;
         return createTextResponse(servicesText);
     } catch (error) {
         return createTextResponse(`Failed to retrieve services list: ${error}`);
@@ -109,8 +88,7 @@ server.tool("get-deploys", "Get list of available deploys", { serviceId: z.strin
             return createTextResponse("No deploys found");
         }
 
-        const formattedDeploys = deployData.map((data: DeployData) => formatDeploy(data));
-        const deploysText = `Available Render Deploys:\n\n${formattedDeploys.join("\n")}`;
+        const deploysText = `Available Render Deploys:\n\n${JSON.stringify(deployData, null, 2)}`;
         
         return createTextResponse(deploysText);
     } catch (error) {
@@ -131,7 +109,7 @@ server.tool("trigger-deploy", "Trigger a deploy", { serviceId: z.string() }, asy
     }
 });
 
-server.tool("retrieve-deploy", "Retrieve a deploy", { serviceId: z.string(), deployId: z.string() }, async ({ serviceId, deployId }) => {
+server.tool("retrieve-deploy", "Retrieve a deploy to check status details", { serviceId: z.string(), deployId: z.string() }, async ({ serviceId, deployId }) => {
     try {
         const deployUrl = `${API_BASE_URL}/v1/services/${serviceId}/deploys/${deployId}`;
         const deployResponse = await getResponseFromRender<DeployResponse>(deployUrl, {
@@ -197,21 +175,18 @@ server.tool("delete-env-var", "Delete environment variables", { serviceId: z.str
     }
 });
 
-function formatDeploy(deployData: DeployData) {
-    const deploy = deployData.deploy;
-    return [
-        `ID: ${deploy.id}`,
-        `Commit: ${deploy.commit.id}`,
-        `Commit Message: ${deploy.commit.message}`,
-        `Commit Created At: ${deploy.commit.createdAt}`,
-        `Status: ${deploy.status}`,
-        `Trigger: ${deploy.trigger}`,
-        `Finished At: ${deploy.finishedAt}`,
-        `Created At: ${deploy.createdAt}`,
-        `Updated At: ${deploy.updatedAt}`,
-        "---"
-    ].join("\n");
-}
+server.tool("get-logs", "Get logs for a service", { ownerId: z.string(), serverId: z.string() }, async ({ ownerId, serverId }) => {
+    try {
+        const logsUrl = `${API_BASE_URL}/v1/logs?ownerId=${ownerId}&direction=backward&resource=${serverId}&limit=40`;
+        const logsResponse = await getResponseFromRender<LogsResponse>(logsUrl, {
+            method: 'GET'
+        });
+        
+        return createTextResponse(`Logs:\n${JSON.stringify(logsResponse, null, 2)}`);
+    } catch (error) {
+        return createTextResponse(`Failed to get logs: ${error}`);
+    }
+});
 
 async function main() {
     const transport = new StdioServerTransport();

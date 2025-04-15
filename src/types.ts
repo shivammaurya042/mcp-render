@@ -69,6 +69,25 @@ export interface DeployData {
     cursor: string;
 }
 
+export interface Label {
+    name: string;
+    value: string;
+}
+
+export interface LogEntry {
+    id: string;
+    message: string;
+    timestamp: string;
+    labels: Label[];
+}
+
+export interface LogsResponse {
+    hasMore: boolean;
+    nextStartTime: string;
+    nextEndTime: string;
+    logs: LogEntry[];
+}
+
 export interface DeployResponse {
     id: string;
     commit: {
