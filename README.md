@@ -2,7 +2,7 @@
 
 This MCP (Model Context Protocol) server makes managing your Render.com account refreshingly easy. Skip the endless clicking, just connect it to your favorite MCP client (like Claude app or windsurf/cursor), tell your LLM what you want done, and let it handle your Render services for you. Deployment management without the UI hassle, because you’ve got better things to do.
 
-## Features
+## MCP server capabilities
 - Get services list
 - Get deploys list
 - Trigger deploy
