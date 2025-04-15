@@ -94,4 +94,7 @@ export interface EnvResponseItem {
     cursor: string;
 }
 
-export type EnvResponse = EnvResponseItem[];
+export interface RenderAPIError {
+    id: string;
+    message: string;
+}

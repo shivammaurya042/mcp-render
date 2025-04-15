@@ -7,10 +7,10 @@ const API_BASE_URL = "https://api.render.com";
 const server = new McpServer({
     name: "render",
     version: "1.0.0",
+    instructions: "To use this server, you need to set the RENDER_API_KEY environment variable to a valid Render API key."
 });
 function getApiKey() {
-    const apiKey = "rnd_LY1CFXNCRh6PYMShYONebR5iebCI";
-    // const apiKey = process.env.RENDER_API_KEY;
+    const apiKey = process.env.RENDER_API_KEY;
     if (!apiKey) {
         console.error("RENDER_API_KEY environment variable is not set");
         process.exit(1);
@@ -18,6 +18,7 @@ function getApiKey() {
     return apiKey;
 }
 const RENDER_API_KEY = getApiKey();
+// const RENDER_API_KEY = getApiKey();
 // Helper function for making Render API requests
 async function getResponseFromRender(url, options) {
     try {
@@ -29,14 +30,31 @@ async function getResponseFromRender(url, options) {
             ...options,
         });
         if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
+            const errorData = await response.json();
+            throw new Error(`Render API Error: ${errorData.message}`);
+        }
+        const contentLength = response.headers.get('content-length');
+        if (contentLength === '0' || response.status === 204) {
+            return {};
         }
         return await response.json();
     }
     catch (error) {
         console.error("Error making Render request:", error);
-        return null;
+        throw error;
     }
+}
+// Helper function to create standard text response
+// Explicitly define the return structure to match McpServer.tool expectations
+function createTextResponse(text) {
+    return {
+        content: [
+            {
+                type: "text",
+                text: text,
+            },
+        ],
+    };
 }
 // Format service data
 function formatService(serviceData) {
@@ -59,217 +77,107 @@ function formatService(serviceData) {
 }
 // Register render service tools
 server.tool("get-services", "Get list of available services", async () => {
-    const servicesUrl = `${API_BASE_URL}/v1/services?includePreviews=true&limit=20`;
-    const servicesData = await getResponseFromRender(servicesUrl);
-    if (!servicesData) {
-        return {
-            content: [
-                {
-                    type: "text",
-                    text: "Failed to retrieve services data",
-                },
-            ],
-        };
+    try {
+        const servicesUrl = `${API_BASE_URL}/v1/services?includePreviews=true&limit=20`;
+        const servicesData = await getResponseFromRender(servicesUrl);
+        if (servicesData.length === 0) {
+            return createTextResponse("No services found");
+        }
+        const formattedServices = servicesData.map((data) => formatService(data));
+        const servicesText = `Available Render Services:\n\n${formattedServices.join("\n")}`;
+        return createTextResponse(servicesText);
     }
-    if (servicesData.length === 0) {
-        return {
-            content: [
-                {
-                    type: "text",
-                    text: "No services found",
-                },
-            ],
-        };
+    catch (error) {
+        return createTextResponse(`Failed to retrieve services list: ${error}`);
     }
-    const formattedServices = servicesData.map((data) => formatService(data));
-    const servicesText = `Available Render Services:\n\n${formattedServices.join("\n")}`;
-    return {
-        content: [
-            {
-                type: "text",
-                text: servicesText,
-            },
-        ],
-    };
 });
 server.tool("get-deploys", "Get list of available deploys", { serviceId: z.string() }, async ({ serviceId }) => {
-    const servicesUrl = `${API_BASE_URL}/v1/services/${serviceId}/deploys?limit=20`;
-    const servicesData = await getResponseFromRender(servicesUrl);
-    if (!servicesData) {
-        return {
-            content: [
-                {
-                    type: "text",
-                    text: "Failed to retrieve deploys data",
-                },
-            ],
-        };
+    try {
+        const servicesUrl = `${API_BASE_URL}/v1/services/${serviceId}/deploys?limit=20`;
+        const deployData = await getResponseFromRender(servicesUrl);
+        if (deployData.length === 0) {
+            return createTextResponse("No deploys found");
+        }
+        const formattedDeploys = deployData.map((data) => formatDeploy(data));
+        const deploysText = `Available Render Deploys:\n\n${formattedDeploys.join("\n")}`;
+        return createTextResponse(deploysText);
     }
-    if (servicesData.length === 0) {
-        return {
-            content: [
-                {
-                    type: "text",
-                    text: "No deploys found",
-                },
-            ],
-        };
+    catch (error) {
+        return createTextResponse(`Failed to retrieve deploys: ${error}`);
     }
-    const formattedDeploys = servicesData.map((data) => formatDeploy(data));
-    const deploysText = `Available Render Deploys:\n\n${formattedDeploys.join("\n")}`;
-    return {
-        content: [
-            {
-                type: "text",
-                text: deploysText,
-            },
-        ],
-    };
 });
 server.tool("trigger-deploy", "Trigger a deploy", { serviceId: z.string() }, async ({ serviceId }) => {
-    const deployUrl = `${API_BASE_URL}/v1/services/${serviceId}/deploys`;
-    const deployResponse = await getResponseFromRender(deployUrl, {
-        method: 'POST'
-    });
-    if (!deployResponse) {
-        return {
-            content: [
-                {
-                    type: "text",
-                    text: "Failed to trigger deploy",
-                },
-            ],
-        };
+    try {
+        const deployUrl = `${API_BASE_URL}/v1/services/${serviceId}/deploys`;
+        const deployResponse = await getResponseFromRender(deployUrl, {
+            method: 'POST'
+        });
+        return createTextResponse(`Deploy triggered with status: ${deployResponse.status}. Complete detail:\n${JSON.stringify(deployResponse, null, 2)}`);
     }
-    return {
-        content: [
-            {
-                type: "text",
-                text: `Deploy triggered with status: ${deployResponse.status}. Complete detail:\n${JSON.stringify(deployResponse, null, 2)}`,
-            },
-        ],
-    };
+    catch (error) {
+        return createTextResponse(`Failed to trigger deploy: ${error}`);
+    }
 });
 server.tool("retrieve-deploy", "Retrieve a deploy", { serviceId: z.string(), deployId: z.string() }, async ({ serviceId, deployId }) => {
-    const deployUrl = `${API_BASE_URL}/v1/services/${serviceId}/deploys/${deployId}`;
-    const deployResponse = await getResponseFromRender(deployUrl, {
-        method: 'GET'
-    });
-    if (!deployResponse) {
-        return {
-            content: [
-                {
-                    type: "text",
-                    text: "Failed to retrieve deploy",
-                },
-            ],
-        };
+    try {
+        const deployUrl = `${API_BASE_URL}/v1/services/${serviceId}/deploys/${deployId}`;
+        const deployResponse = await getResponseFromRender(deployUrl, {
+            method: 'GET'
+        });
+        return createTextResponse(`Deploy retrieve status: ${deployResponse.status}. Complete detail:\n${JSON.stringify(deployResponse, null, 2)}`);
     }
-    return {
-        content: [
-            {
-                type: "text",
-                text: `Deploy retrieve status: ${deployResponse.status}. Complete detail:\n${JSON.stringify(deployResponse, null, 2)}`,
-            },
-        ],
-    };
+    catch (error) {
+        return createTextResponse(`Failed to retrieve deploy: ${error}`);
+    }
 });
 server.tool("cancel-deploy", "Cancel a deploy", { serviceId: z.string(), deployId: z.string() }, async ({ serviceId, deployId }) => {
-    const deployUrl = `${API_BASE_URL}/v1/services/${serviceId}/deploys/${deployId}/cancel`;
-    const deployResponse = await getResponseFromRender(deployUrl, {
-        method: 'POST'
-    });
-    if (!deployResponse) {
-        return {
-            content: [
-                {
-                    type: "text",
-                    text: "Failed to cancel deploy",
-                },
-            ],
-        };
+    try {
+        const deployUrl = `${API_BASE_URL}/v1/services/${serviceId}/deploys/${deployId}/cancel`;
+        const deployResponse = await getResponseFromRender(deployUrl, {
+            method: 'POST'
+        });
+        return createTextResponse(`Deploy cancel status: ${deployResponse.status}. Complete detail:\n${JSON.stringify(deployResponse, null, 2)}`);
     }
-    return {
-        content: [
-            {
-                type: "text",
-                text: `Deploy cancel status: ${deployResponse.status}. Complete detail:\n${JSON.stringify(deployResponse, null, 2)}`,
-            },
-        ],
-    };
+    catch (error) {
+        return createTextResponse(`Failed to cancel deploy: ${error}`);
+    }
 });
 server.tool("list-env-var", "List environment variables", { serviceId: z.string() }, async ({ serviceId }) => {
-    const envUrl = `${API_BASE_URL}/v1/services/${serviceId}/env`;
-    const envResponse = await getResponseFromRender(envUrl, {
-        method: 'GET'
-    });
-    if (!envResponse) {
-        return {
-            content: [
-                {
-                    type: "text",
-                    text: "Failed to list environment variables",
-                },
-            ],
-        };
+    try {
+        const envUrl = `${API_BASE_URL}/v1/services/${serviceId}/env`;
+        const envResponse = await getResponseFromRender(envUrl, {
+            method: 'GET'
+        });
+        return createTextResponse(`Environment variables list:\n${JSON.stringify(envResponse, null, 2)}`);
     }
-    return {
-        content: [
-            {
-                type: "text",
-                text: `Environment variables list:\n${JSON.stringify(envResponse, null, 2)}`,
-            },
-        ],
-    };
+    catch (error) {
+        return createTextResponse(`Failed to list environment variables: ${error}`);
+    }
 });
 server.tool("add-update-env-var", "Add or update environment variables", { serviceId: z.string(), envVarKey: z.string(), envVarValue: z.string() }, async ({ serviceId, envVarKey, envVarValue }) => {
-    const envUrl = `${API_BASE_URL}/v1/services/${serviceId}/env-vars/${envVarKey}`;
-    const envResponse = await getResponseFromRender(envUrl, {
-        method: 'PUT',
-        body: JSON.stringify({ value: envVarValue })
-    });
-    if (!envResponse) {
-        return {
-            content: [
-                {
-                    type: "text",
-                    text: "Failed to add/update environment variable",
-                },
-            ],
-        };
+    try {
+        const envUrl = `${API_BASE_URL}/v1/services/${serviceId}/env-vars/${envVarKey}`;
+        const envResponse = await getResponseFromRender(envUrl, {
+            method: 'PUT',
+            body: JSON.stringify({ value: envVarValue })
+        });
+        return createTextResponse(`Env. variable added/updated:\n${JSON.stringify(envResponse, null, 2)}`);
     }
-    return {
-        content: [
-            {
-                type: "text",
-                text: `Env. variable added/updated:\n${JSON.stringify(envResponse, null, 2)}`,
-            },
-        ],
-    };
+    catch (error) {
+        return createTextResponse(`Failed to add/update env. variable: ${error}`);
+    }
 });
 server.tool("delete-env-var", "Delete environment variables", { serviceId: z.string(), envVarKey: z.string() }, async ({ serviceId, envVarKey }) => {
-    const envUrl = `${API_BASE_URL}/v1/services/${serviceId}/env-vars/${envVarKey}`;
-    const envResponse = await getResponseFromRender(envUrl, {
-        method: 'DELETE'
-    });
-    if (!envResponse) {
-        return {
-            content: [
-                {
-                    type: "text",
-                    text: "Failed to delete environment variable",
-                },
-            ],
-        };
+    try {
+        const envUrl = `${API_BASE_URL}/v1/services/${serviceId}/env-vars/${envVarKey}`;
+        await getResponseFromRender(envUrl, {
+            method: 'DELETE'
+        });
+        return createTextResponse(`Env. variable '${envVarKey}' deleted successfully.`);
     }
-    return {
-        content: [
-            {
-                type: "text",
-                text: `API response:\n${JSON.stringify(envResponse, null, 2)}`,
-            },
-        ],
-    };
+    catch (error) {
+        return createTextResponse(`Failed to delete env. variable '${envVarKey}'. Error: ${error}`);
+    }
 });
 function formatDeploy(deployData) {
     const deploy = deployData.deploy;
