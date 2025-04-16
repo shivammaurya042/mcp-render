@@ -17,11 +17,11 @@ Render is a cloud hosting platform offering a simplified way to build, deploy, a
 - Get logs
 
 ## Commands to try
-- Get me render services list
-- What is the status of my last deploy for <service name>
-- Check logs for <service name>
-- Redeploy <service name>
-- Add new environment variable for <service name>, <env var name> = <env var value>
+- Get me render services list.
+- What is the status of my last deploy for `<service name>`.
+- Check logs for `<service name>`.
+- Redeploy `<service name>`.
+- Add new environment variable for `<service name>`, `<env key>` = `<env value>`.
 
 ## Configuration
 1. Get your Render API key from [Render Dashboard](https://dashboard.render.com)
