@@ -16,10 +16,12 @@ Render is a cloud hosting platform offering a simplified way to build, deploy, a
 - Delete environment variables
 - Get logs
 
-## Installation
-```bash
-npx mcp-server
-```
+## Commands to try
+- Get me render services list
+- What is the status of my last deploy for <service name>
+- Check logs for <service name>
+- Redeploy <service name>
+- Add new environment variable for <service name>, <env var name> = <env var value>
 
 ## Configuration
 1. Get your Render API key from [Render Dashboard](https://dashboard.render.com)
@@ -30,7 +32,7 @@ Steps:
 - Click "Create API Key"
 
 ## Usage
-To integrate this server with the MCP client (ex: claude app, windsurf/cursor), add the following to your app's server configuration:
+To integrate this server with the MCP client (ex: claude app, windsurf/cursor, cline), add the following to your app's server configuration:
 
 #### NPX
 
