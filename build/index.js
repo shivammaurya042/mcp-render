@@ -70,6 +70,34 @@ server.tool("get-services", "Get list of available services", async () => {
         return createTextResponse(`Failed to retrieve services list: ${error}`);
     }
 });
+server.tool("create-service", "Create a new Render service", {
+    name: z.string(),
+    type: z.enum(['static_site', 'web_service', 'private_service', 'background_worker', 'cron_job']),
+    ownerId: z.string(),
+    repo: z.string().optional(),
+    envVars: z.array(z.object({
+        key: z.string(),
+        value: z.string()
+    })).optional()
+}, async ({ name, type, ownerId, repo, envVars }) => {
+    try {
+        const serviceUrl = `${API_BASE_URL}/v1/services`;
+        const serviceResponse = await getResponseFromRender(serviceUrl, {
+            method: 'POST',
+            body: JSON.stringify({
+                name,
+                ownerId,
+                type,
+                repo,
+                envVars
+            })
+        });
+        return createTextResponse(`Service created successfully:\n${JSON.stringify(serviceResponse, null, 2)}`);
+    }
+    catch (error) {
+        return createTextResponse(`Failed to create service: ${error}`);
+    }
+});
 server.tool("get-deploys", "Get list of available deploys", { serviceId: z.string() }, async ({ serviceId }) => {
     try {
         const servicesUrl = `${API_BASE_URL}/v1/services/${serviceId}/deploys?limit=20`;
@@ -155,6 +183,16 @@ server.tool("delete-env-var", "Delete environment variables", { serviceId: z.str
     }
     catch (error) {
         return createTextResponse(`Failed to delete env. variable '${envVarKey}'. ${error}`);
+    }
+});
+server.tool("get-owners", "Get list of Render owners (users/teams)", async () => {
+    try {
+        const ownersUrl = `${API_BASE_URL}/v1/owners?limit=20`;
+        const ownersResponse = await getResponseFromRender(ownersUrl);
+        return createTextResponse(`Available owners:\n${JSON.stringify(ownersResponse, null, 2)}. If multiple owners found, ask user which one to use.`);
+    }
+    catch (error) {
+        return createTextResponse(`Failed to fetch owners: ${error}`);
     }
 });
 server.tool("get-logs", "Get logs for a service", { ownerId: z.string(), serverId: z.string() }, async ({ ownerId, serverId }) => {

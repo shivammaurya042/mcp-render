@@ -7,6 +7,7 @@ Render is a cloud hosting platform offering a simplified way to build, deploy, a
 
 ## MCP server capabilities
 - Get services list
+- Create new service
 - Get deploys list
 - Trigger deploy
 - Retrieve deploy
